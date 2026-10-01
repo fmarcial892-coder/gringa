@@ -16,6 +16,7 @@ const paypalMessage=document.querySelector("#paypalMessage");
 const checkout=document.querySelector("#checkout");
 const paypalContainer=document.querySelector("#paypal-button-container");
 let paypalPromise=null;
+let activeQuote=null;
 
 function money(n){return "$"+Number(n).toFixed(2)}
 function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
@@ -97,8 +98,8 @@ function renderCart(){
     const p=products.find(z=>productId(z)===x.productId);
     const v=p?.variants?.find(z=>z.vid===x.variantId);
     if(!p||!v)return "";
-    total+=p.price*x.qty;
-    return "<div class=\"cart-row\"><img src=\""+esc(v.image||p.image)+"\" alt=\""+esc(p.name)+"\"><div><h4>"+esc(p.name)+"</h4><small>"+esc(v.name||v.sku)+" · "+x.qty+" × "+money(p.price)+"</small></div><button type=\"button\" class=\"remove\" data-remove=\""+i+"\">Remove</button></div>";
+    total+=(v?.price||p.price)*x.qty;
+    return "<div class=\"cart-row\"><img src=\""+esc(v.image||p.image)+"\" alt=\""+esc(p.name)+"\"><div><h4>"+esc(p.name)+"</h4><small>"+esc(v.name||v.sku)+" · "+x.qty+" × "+money(v?.price||p.price)+"</small></div><button type=\"button\" class=\"remove\" data-remove=\""+i+"\">Remove</button></div>";
   }).join("");
   subtotal.textContent=money(total);
   localStorage.setItem("gringa-cart",JSON.stringify(cart));
@@ -129,85 +130,123 @@ async function loadPayPal(){
   return paypalPromise;
 }
 
+function shippingForm(){
+  return `
+    <div class="shipping-form" id="shippingForm">
+      <div class="shipping-title"><span>DELIVERY</span><strong>Where should we send it?</strong><small>CJ shipping is calculated from your destination before payment.</small></div>
+      <div class="shipping-grid">
+        <input id="shipName" placeholder="Full name" autocomplete="name">
+        <input id="shipEmail" type="email" placeholder="Email" autocomplete="email">
+        <input id="shipPhone" placeholder="Phone" autocomplete="tel">
+        <select id="shipCountry">
+          <option value="">Country</option>
+          <option value="US">United States</option><option value="CA">Canada</option><option value="GB">United Kingdom</option>
+          <option value="AU">Australia</option><option value="DE">Germany</option><option value="FR">France</option>
+          <option value="ES">Spain</option><option value="IT">Italy</option><option value="PT">Portugal</option>
+          <option value="BR">Brazil</option><option value="MX">Mexico</option><option value="NL">Netherlands</option>
+          <option value="BE">Belgium</option><option value="IE">Ireland</option><option value="NZ">New Zealand</option>
+        </select>
+        <input id="shipZip" placeholder="Postal / ZIP code" autocomplete="postal-code">
+        <input id="shipProvince" placeholder="State / Province" autocomplete="address-level1">
+        <input id="shipCity" placeholder="City" autocomplete="address-level2">
+        <input id="shipAddress" class="full" placeholder="Street address" autocomplete="street-address">
+        <input id="shipAddress2" class="full" placeholder="Apartment, suite, unit (optional)" autocomplete="address-line2">
+      </div>
+      <button type="button" class="quote-btn" id="quoteBtn">Calculate delivery & total →</button>
+      <div class="quote-result" id="quoteResult"></div>
+    </div>`;
+}
+
+function shippingValues(){
+  return {
+    name:document.querySelector("#shipName")?.value.trim(),
+    email:document.querySelector("#shipEmail")?.value.trim(),
+    phone:document.querySelector("#shipPhone")?.value.trim(),
+    countryCode:document.querySelector("#shipCountry")?.value,
+    zip:document.querySelector("#shipZip")?.value.trim(),
+    province:document.querySelector("#shipProvince")?.value.trim(),
+    city:document.querySelector("#shipCity")?.value.trim(),
+    address:document.querySelector("#shipAddress")?.value.trim(),
+    address2:document.querySelector("#shipAddress2")?.value.trim()
+  };
+}
+
+async function calculateQuote(){
+  const result=document.querySelector("#quoteResult"),btn=document.querySelector("#quoteBtn");
+  btn.disabled=true; btn.textContent="Calculating real CJ delivery…";
+  result.className="quote-result";
+  result.textContent="Checking product cost, destination and available CJ shipping routes.";
+  try{
+    const r=await fetch("/api/quote",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({cart:cart.map(x=>({productId:x.productId,variantId:x.variantId,quantity:x.qty})),address:shippingValues()})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok)throw new Error(d.error||"CJ could not calculate delivery for this destination.");
+    activeQuote=d;
+    result.className="quote-result ready";
+    result.innerHTML="<div><span>Products</span><strong>"+money(d.productSubtotal)+"</strong></div>"+
+      "<div><span>Delivery</span><strong>"+money(d.shippingPrice)+"</strong></div>"+
+      "<div class="quote-total"><span>Total</span><strong>"+money(d.total)+"</strong></div>"+
+      "<small>"+esc(d.logistics)+(d.estimate?" · estimated "+esc(d.estimate)+" days":"")+" · calculated from CJ</small>";
+    subtotal.textContent=money(d.total);
+    checkout.hidden=true;
+    await renderPayPal(d.quoteId);
+  }catch(e){
+    activeQuote=null; result.className="quote-result error"; result.textContent=e.message||"Could not calculate delivery.";
+    btn.disabled=false; btn.textContent="Calculate delivery & total →";
+  }
+}
+
+async function renderPayPal(quoteId){
+  paypalMessage.className="paypal-message"; paypalMessage.textContent="Preparing secure PayPal checkout…";
+  paypalContainer.innerHTML="";
+  await loadPayPal();
+  const b=window.paypal.Buttons({
+    style:{layout:"vertical",shape:"rect",label:"paypal",height:48},
+    createOrder:async()=>{
+      const r=await fetch("/api/paypal/create-order",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({quoteId,cart:cart.map(x=>({productId:x.productId,variantId:x.variantId,quantity:x.qty}))})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.id)throw new Error(d.error||"Could not create the PayPal order.");
+      return d.id;
+    },
+    onApprove:async(data)=>{
+      paypalMessage.textContent="Confirming payment and sending the order to CJ…";
+      try{
+        const r=await fetch("/api/paypal/capture-order",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({orderId:data.orderID,quoteId,cart:cart.map(x=>({productId:x.productId,variantId:x.variantId,quantity:x.qty}))})});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok){
+          paypalMessage.className="paypal-message error";
+          paypalMessage.textContent=d.error||"Payment was captured, but fulfillment needs attention. Do not pay again.";
+          return;
+        }
+        cart=[]; activeQuote=null; localStorage.removeItem("gringa-cart"); renderCart(); paypalContainer.innerHTML="";
+        paypalMessage.className="paypal-message success";
+        paypalMessage.textContent="Payment successful. Your order has been sent to CJ for fulfillment.";
+      }catch(e){
+        paypalMessage.className="paypal-message error";
+        paypalMessage.textContent=e.message||"We couldn't finish the order handoff. Do not pay again.";
+      }
+    },
+    onCancel:()=>{paypalMessage.textContent="Checkout cancelled. Your bag and delivery quote are still saved.";},
+    onError:e=>{console.error(e);paypalMessage.className="paypal-message error";paypalMessage.textContent="PayPal could not open the payment window. Your quote is still saved.";}
+  });
+  await b.render("#paypal-button-container");
+  paypalMessage.textContent="Secure checkout ready.";
+}
+
 async function openCheckout(){
   if(!cart.length)return;
-  checkout.disabled=true;
-  checkout.textContent="Checking secure checkout…";
-  paypalArea.hidden=false;
-  paypalMessage.className="paypal-message";
-  paypalMessage.textContent="Connecting securely to PayPal…";
-  paypalContainer.innerHTML="";
-  try{
-    await loadPayPal();
-    const b=window.paypal.Buttons({
-      style:{layout:"vertical",shape:"rect",label:"paypal",height:48},
-      createOrder:async()=>{
-        const r=await fetch("/api/paypal/create-order",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({cart:cart.map(x=>({productId:x.productId,variantId:x.variantId,quantity:x.qty}))})
-        });
-        const d=await r.json().catch(()=>({}));
-        if(!r.ok||!d.id)throw new Error(d.error||"Could not create the PayPal order.");
-        return d.id;
-      },
-      onApprove:async(data)=>{
-        paypalMessage.textContent="Confirming payment and sending the order to our fulfillment partner…";
-        try{
-          const r=await fetch("/api/paypal/capture-order",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({orderId:data.orderID,cart:cart.map(x=>({productId:x.productId,variantId:x.variantId,quantity:x.qty}))})
-          });
-          const d=await r.json().catch(()=>({}));
-          if(!r.ok){
-            paypalMessage.className="paypal-message error";
-            paypalMessage.textContent=d.error||"Payment was captured, but fulfillment needs attention. Do not pay again.";
-            checkout.hidden=false;
-            checkout.disabled=false;
-            checkout.textContent="Contact support →";
-            return;
-          }
-          cart=[];
-          localStorage.removeItem("gringa-cart");
-          renderCart();
-          paypalContainer.innerHTML="";
-          checkout.hidden=true;
-          paypalMessage.className="paypal-message success";
-          paypalMessage.textContent="Payment successful. Your order has been sent to our fulfillment partner.";
-        }catch(e){
-          paypalMessage.className="paypal-message error";
-          paypalMessage.textContent=e.message||"We couldn't finish the order handoff. Do not pay again.";
-          checkout.hidden=false;
-          checkout.disabled=false;
-          checkout.textContent="Contact support →";
-        }
-      },
-      onCancel:()=>{
-        paypalMessage.textContent="Checkout cancelled. Your bag is still saved.";
-        checkout.hidden=false;
-        checkout.disabled=false;
-        checkout.textContent="Continue to secure checkout →";
-      },
-      onError:e=>{
-        console.error(e);
-        paypalMessage.className="paypal-message error";
-        paypalMessage.textContent="PayPal could not open the payment window. Your bag is still saved.";
-        checkout.hidden=false;
-        checkout.disabled=false;
-        checkout.textContent="Try secure checkout again →";
-      }
-    });
-    await b.render("#paypal-button-container");
-    checkout.hidden=true;
-    paypalMessage.textContent="Secure checkout ready.";
-  }catch(e){
-    paypalMessage.className="paypal-message error";
-    paypalMessage.textContent=e.message||"Unable to open secure checkout.";
-    checkout.hidden=false;
-    checkout.disabled=false;
-    checkout.textContent="Try secure checkout again →";
+  checkout.disabled=true; checkout.textContent="Preparing delivery…"; paypalArea.hidden=false;
+  paypalMessage.className="paypal-message"; paypalMessage.textContent="Enter your delivery details first.";
+  paypalContainer.innerHTML=""; activeQuote=null;
+  if(!document.querySelector("#shippingForm")){
+    const holder=document.createElement("div"); holder.innerHTML=shippingForm(); paypalArea.prepend(holder.firstElementChild);
+    document.querySelector("#quoteBtn").addEventListener("click",calculateQuote);
   }
+  checkout.hidden=true;
+  document.querySelector("#shippingForm").scrollIntoView({behavior:"smooth",block:"nearest"});
+  checkout.disabled=false; checkout.textContent="Continue to secure checkout →";
 }
 
 document.addEventListener("click",async e=>{
