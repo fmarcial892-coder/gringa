@@ -21,9 +21,11 @@ const orderMemory=new Map();
 const quoteMemory=new Map();
 const catalogCache={list:null,expires:0};
 const detailCache=new Map();
+let paypalTokenCache={token:"",expiresAt:0};
 
 function env(n){if(!process.env[n])throw new Error(n+" is not configured on Render.");return process.env[n]}
 function clean(v,n=500){return String(v??"").trim().slice(0,n)}
+function plainText(v,n=1200){return String(v??"").replace(/<[^>]*>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ").trim().slice(0,n)}
 
 async function cj(path,{method="GET",query,body}={}) {
   const u=new URL(CJ_BASE+path);
@@ -47,6 +49,7 @@ function paypalBase(){
 }
 
 async function paypalToken(){
+  if(paypalTokenCache.token&&paypalTokenCache.expiresAt>Date.now()+60000) return paypalTokenCache.token;
   const id=env("PAYPAL_CLIENT_ID"),secret=env("PAYPAL_CLIENT_SECRET");
   const r=await fetch(paypalBase()+"/v1/oauth2/token",{
     method:"POST",
@@ -57,8 +60,14 @@ async function paypalToken(){
     body:"grant_type=client_credentials"
   });
   const d=await r.json().catch(()=>({}));
-  if(!r.ok||!d.access_token) throw new Error(d.error_description||d.error||"PayPal authentication failed.");
-  return d.access_token;
+  if(!r.ok||!d.access_token){
+    if(String(d.error||"").toLowerCase()==="invalid_client"||r.status===401){
+      throw new Error("PayPal credentials are invalid for the configured environment. Use a matching Client ID and Secret from the same PayPal Live/Sandbox app.");
+    }
+    throw new Error(d.error_description||d.error||"PayPal authentication failed.");
+  }
+  paypalTokenCache={token:d.access_token,expiresAt:Date.now()+Number(d.expires_in||300)*1000};
+  return paypalTokenCache.token;
 }
 
 async function paypal(path,{method="GET",body}={}) {
@@ -117,6 +126,7 @@ function shippingSalePrice(cost){
 function normalizeDetail(d,pid){
   const vs=variants(d).map(v=>({...v,price:retailPrice(v.cost)}));
   if(!vs.length) throw new Error("CJ returned no purchasable variants for this product.");
+  if(!String(d.description||"").trim()) throw new Error("CJ returned incomplete product information.");
   const imgs=Array.from(new Set([
     d.bigImage,d.bigimg,
     ...(Array.isArray(d.productImageSet)?d.productImageSet:[])
@@ -129,7 +139,7 @@ function normalizeDetail(d,pid){
     price:first,
     image:imgs[0]||"",
     images:imgs,
-    description:String(d.description||"Selected from our fulfillment partner."),
+    description:plainText(d.description||"",900),
     category:String(d.oneCategoryName||d.twoCategoryName||"Selected edit"),
     variants:vs
   };
@@ -168,23 +178,11 @@ async function catalogList(){
     rows.push(...pageRows);
   }
 
-  const summaries=rows
-    .filter(x=>x?.id&&x.id!==CJ_PRODUCT_ID&&x.saleStatus!=="0"&&x.bigImage)
-    .map(x=>{
-      const supplier=Number(x.nowPrice??x.sellPrice??0);
-      return {
-        id:"gringa-cj-"+String(x.id),
-        cjProductId:String(x.id),
-        name:String(x.nameEn||x.productNameEn||"GRINGA Edit"),
-        price:supplier>0?retailPrice(supplier):29.99,
-        image:String(x.bigImage||""),
-        images:x.bigImage?[String(x.bigImage)]:[],
-        description:String(x.description||"Selected from our fulfillment partner."),
-        category:String(x.oneCategoryName||x.twoCategoryName||x.threeCategoryName||"Selected edit"),
-        variants:null
-      };
-    })
-    .filter(x=>x.image);
+  const candidates=rows
+    .filter(x=>x?.id&&String(x.id)!==CJ_PRODUCT_ID&&x.saleStatus!=="0"&&x.bigImage)
+    .filter(x=>Number(x.nowPrice??x.sellPrice??0)>0)
+    .map(x=>String(x.id))
+    .filter((id,i,a)=>a.indexOf(id)===i);
 
   const list=[{
     id:primary.id,
@@ -198,12 +196,32 @@ async function catalogList(){
     variants:null
   }];
 
-  for(const p of summaries){
-    if(list.length>=20) break;
-    if(!list.some(x=>x.cjProductId===p.cjProductId)) list.push(p);
+  // Hydrate real CJ details in small batches so every visible card has
+  // a real image, real variant pricing and real product information.
+  for(let i=0;i<candidates.length&&list.length<20;i+=5){
+    const batch=candidates.slice(i,i+5);
+    const settled=await Promise.allSettled(batch.map(pid=>catalogDetail(pid)));
+    for(const item of settled){
+      if(item.status!=="fulfilled") continue;
+      const p=item.value;
+      if(!p?.image||!Array.isArray(p.variants)||!p.variants.length) continue;
+      if(list.some(x=>x.cjProductId===p.cjProductId)) continue;
+      list.push({
+        id:p.id,
+        cjProductId:p.cjProductId,
+        name:p.name,
+        price:p.price,
+        image:p.image,
+        images:p.images,
+        description:p.description,
+        category:p.category||"GRINGA EDIT",
+        variants:null
+      });
+      if(list.length>=20) break;
+    }
   }
 
-  if(list.length<20) throw new Error("CJ returned fewer than 20 sellable products.");
+  if(list.length<20) throw new Error("CJ returned fewer than 20 sellable products with complete live data.");
   catalogCache.list=list;
   catalogCache.expires=Date.now()+10*60*1000;
   return list;
@@ -305,13 +323,20 @@ async function buildQuote(cartInput,addressInput){
   const origins=stocks.map(x=>origin(x,s.countryCode));
   const from=origins.every(x=>x===origins[0])?origins[0]:"CN";
   const ship=await freight(from,s.countryCode,s.zip,items);
-  const shippingPrice=shippingSalePrice(ship.shippingCost);
-  const productSubtotal=items.reduce((sum,x)=>sum+x.unitPrice*x.quantity,0);
-  const total=productSubtotal+shippingPrice;
+  const supplierProductCost=items.reduce((sum,x)=>sum+x.variant.cost*x.quantity,0);
+  const supplierShippingCost=Math.max(0,Number(ship.shippingCost)||0);
+  const combinedCost=supplierProductCost+supplierShippingCost;
+  const variable=PAYPAL_VARIABLE_RATE+TAX_RATE;
+  if(variable+TARGET_MARGIN>=1) throw new Error("Pricing configuration is invalid.");
+  const totalForMargin=(combinedCost+PAYPAL_FIXED_FEE)/(1-variable-TARGET_MARGIN);
+  const totalForMinimum=(combinedCost+PAYPAL_FIXED_FEE+MIN_PROFIT)/(1-variable);
+  const total=roundUp99(Math.max(totalForMargin,totalForMinimum));
+  const shippingPrice=supplierShippingCost;
+  const productSubtotal=roundUp99(Math.max(0,total-shippingPrice));
   const variableFee=(total*PAYPAL_VARIABLE_RATE);
   const tax=(total*TAX_RATE);
   const fixed=PAYPAL_FIXED_FEE;
-  const estimatedProfit=total-productSubtotal-ship.shippingCost-variableFee-tax-fixed;
+  const estimatedProfit=total-supplierProductCost-supplierShippingCost-variableFee-tax-fixed;
   const quote={
     id:quoteId(),
     createdAt:Date.now(),
@@ -319,6 +344,8 @@ async function buildQuote(cartInput,addressInput){
     cart:cartInput,
     address:s,
     items:items.map(x=>({productId:x.product.cjProductId,variantId:x.variant.vid,quantity:x.quantity,unitPrice:x.unitPrice,cost:x.variant.cost})),
+    supplierProductCost,
+    supplierShippingCost,
     from,
     shippingCost:ship.shippingCost,
     shippingPrice,
@@ -413,8 +440,10 @@ app.get("/api/pricing",(req,res)=>res.json({
 app.get("/api/health",(_q,res)=>res.json({
   ok:true,
   service:"gringa-store",
-  paypal:Boolean(process.env.PAYPAL_CLIENT_ID),
-  cj:Boolean(process.env.CJ_ACCESS_TOKEN)
+  paypal:Boolean(process.env.PAYPAL_CLIENT_ID&&process.env.PAYPAL_CLIENT_SECRET),
+  paypalEnvironment:(process.env.PAYPAL_ENVIRONMENT||"live").toLowerCase(),
+  cj:Boolean(process.env.CJ_ACCESS_TOKEN),
+  catalogProductId:CJ_PRODUCT_ID
 }));
 
 app.get("/api/cj/status",async(_q,res)=>{
