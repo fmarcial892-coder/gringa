@@ -31,3 +31,10 @@ footer{background:#fff;border-top:1px solid var(--line)}.footer-main{padding:60p
 .collection-note h3{font-family:Manrope,sans-serif;font-size:30px;margin:12px 0 8px}
 .collection-note p{max-width:620px;color:#666;line-height:1.6}
 .paypal-message.error{color:#9b1c1c}.paypal-message.success{color:#176b3a}
+
+.product-grid-note{grid-column:1/-1}
+.grid .product{min-width:0}
+.grid .product-info h3{min-height:40px}
+.grid .product-info p{min-height:52px}
+.variant-box[hidden]{display:none}
+.variant-box select{cursor:pointer}
