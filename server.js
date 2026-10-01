@@ -46,9 +46,10 @@ async function paypalAccessToken() {
     body: "grant_type=client_credentials"
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(()=>({}));
   if (!response.ok || !data.access_token) {
-    throw new Error(data.message || "Unable to authenticate with PayPal.");
+    const detail = data.name || data.error || data.message;
+    throw new Error(detail ? `PayPal authentication failed: ${detail}` : "PayPal authentication failed.");
   }
   return data.access_token;
 }
@@ -82,12 +83,21 @@ app.get("/api/paypal/config", (_req, res) => {
   });
 });
 
+app.get("/api/paypal/status", async (_req, res) => {
+  try {
+    await paypalAccessToken();
+    res.json({ ok: true, environment: (process.env.PAYPAL_ENVIRONMENT || "live").toLowerCase() });
+  } catch (error) {
+    console.error("PayPal status error:", error.message);
+    res.status(503).json({ ok: false, error: error.message || "PayPal is unavailable." });
+  }
+});
+
 app.post("/api/paypal/create-order", async (req, res) => {
   try {
     const items = buildCart(req.body?.cart);
     const itemTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const total = itemTotal.toFixed(2);
-
     const token = await paypalAccessToken();
 
     const orderPayload = {
@@ -139,10 +149,11 @@ app.post("/api/paypal/create-order", async (req, res) => {
       body: JSON.stringify(orderPayload)
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(()=>({}));
     if (!response.ok) {
       console.error("PayPal create order error:", JSON.stringify(data));
-      return res.status(502).json({ error: data.message || "PayPal could not create the order." });
+      const detail=data.details?.[0]?.description || data.message;
+      return res.status(502).json({ error: detail || "PayPal could not create the order." });
     }
 
     res.json({ id: data.id });
@@ -160,6 +171,7 @@ app.post("/api/paypal/capture-order", async (req, res) => {
     }
 
     const token = await paypalAccessToken();
+
     const response = await fetch(`${paypalBase()}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
       method: "POST",
       headers: {
@@ -170,10 +182,13 @@ app.post("/api/paypal/capture-order", async (req, res) => {
       body: "{}"
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(()=>({}));
+
     if (!response.ok) {
       console.error("PayPal capture error:", JSON.stringify(data));
-      return res.status(502).json({ error: data.message || "PayPal could not complete the payment." });
+      const issue=data.details?.[0]?.issue;
+      const detail=data.details?.[0]?.description || data.message;
+      return res.status(502).json({ error: detail || issue || "PayPal could not complete the payment." });
     }
 
     const completed = data.status === "COMPLETED";
