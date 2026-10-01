@@ -458,8 +458,8 @@ app.get("/api/catalog",async(_q,res)=>{
     res.set("Cache-Control","public,max-age=300");
     res.json({ok:true,count:products.length,products});
   }catch(e){
-    console.error(e);
-    res.status(503).json({ok:false,error:"The live CJ collection is temporarily unavailable. Please try again shortly."});
+    console.error("CATALOG_ERROR:", e?.stack || e?.message || e);
+    res.status(503).json({ok:false,error:"The live CJ collection is temporarily unavailable. Please try again shortly.",debug:String(e?.message||e).slice(0,240)});
   }
 });
 
