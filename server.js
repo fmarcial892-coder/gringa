@@ -162,7 +162,13 @@ async function catalogList(){
 
   const primary=await catalogDetail(CJ_PRODUCT_ID);
   const rows=[];
-  for(let page=1;page<=5 && rows.length<60;page++){
+
+  // Use CJ's live V2 product list for the storefront cards. We deliberately
+  // do not hydrate every card with /product/query here; variants are loaded
+  // only when the customer opens a product, which keeps the collection fast
+  // and avoids failing the entire catalog because one product has incomplete
+  // detail data.
+  for(let page=1;page<=5 && rows.length<100;page++){
     const r=await cj("/product/listV2",{
       query:{
         page,
@@ -178,13 +184,15 @@ async function catalogList(){
     const pageRows=groups.flatMap(x=>Array.isArray(x?.productList)?x.productList:[]);
     if(!pageRows.length) break;
     rows.push(...pageRows);
+    if(pageRows.length<20) break;
   }
 
   const candidates=rows
-    .filter(x=>x?.id&&String(x.id)!==CJ_PRODUCT_ID&&x.saleStatus!=="0"&&x.bigImage)
+    .filter(x=>x?.id&&String(x.id)!==CJ_PRODUCT_ID)
+    .filter(x=>String(x.saleStatus||"3")!=="0")
+    .filter(x=>x.bigImage)
     .filter(x=>Number(x.nowPrice??x.sellPrice??0)>0)
-    .map(x=>String(x.id))
-    .filter((id,i,a)=>a.indexOf(id)===i);
+    .filter((x,i,a)=>a.findIndex(y=>String(y.id)===String(x.id))===i);
 
   const list=[{
     id:primary.id,
@@ -198,35 +206,29 @@ async function catalogList(){
     variants:null
   }];
 
-  // Hydrate real CJ details in small batches so every visible card has
-  // a real image, real variant pricing and real product information.
-  for(let i=0;i<candidates.length&&list.length<20;i+=5){
-    const batch=candidates.slice(i,i+5);
-    const settled=await Promise.allSettled(batch.map(pid=>catalogDetail(pid)));
-    for(const item of settled){
-      if(item.status!=="fulfilled") continue;
-      const p=item.value;
-      if(!p?.image||!Array.isArray(p.variants)||!p.variants.length) continue;
-      if(list.some(x=>x.cjProductId===p.cjProductId)) continue;
-      list.push({
-        id:p.id,
-        cjProductId:p.cjProductId,
-        name:p.name,
-        price:p.price,
-        image:p.image,
-        images:p.images,
-        description:p.description,
-        category:p.category||"GRINGA EDIT",
-        variants:null
-      });
-      if(list.length>=20) break;
-    }
+  for(const x of candidates){
+    if(list.length>=20) break;
+    const pid=String(x.id);
+    if(list.some(p=>p.cjProductId===pid)) continue;
+    const cost=Number(x.nowPrice??x.sellPrice??0);
+    if(!(cost>0)) continue;
+    list.push({
+      id:"gringa-cj-"+pid,
+      cjProductId:pid,
+      name:String(x.nameEn||"GRINGA Edit"),
+      price:retailPrice(cost),
+      image:String(x.bigImage),
+      images:[String(x.bigImage)],
+      description:plainText(String(x.description||"Product information available from CJ."),900),
+      category:String(x.oneCategoryName||x.twoCategoryName||x.threeCategoryName||"Selected edit"),
+      variants:null
+    });
   }
 
-  if(list.length<20) throw new Error("CJ returned fewer than 20 sellable products with complete live data.");
-  catalogCache.list=list;
+  if(list.length<20) throw new Error("CJ returned fewer than 20 live products.");
+  catalogCache.list=list.slice(0,20);
   catalogCache.expires=Date.now()+10*60*1000;
-  return list;
+  return catalogCache.list;
 }
 
 async function resolveCart(input){
