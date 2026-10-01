@@ -185,7 +185,7 @@ async function calculateQuote(){
     result.className="quote-result ready";
     result.innerHTML="<div><span>Products</span><strong>"+money(d.productSubtotal)+"</strong></div>"+
       "<div><span>Delivery</span><strong>"+money(d.shippingPrice)+"</strong></div>"+
-      "<div class="quote-total"><span>Total</span><strong>"+money(d.total)+"</strong></div>"+
+      "<div class=\"quote-total\"><span>Total</span><strong>"+money(d.total)+"</strong></div>"+
       "<small>"+esc(d.logistics)+(d.estimate?" · estimated "+esc(d.estimate)+" days":"")+" · calculated from CJ</small>";
     subtotal.textContent=money(d.total);
     checkout.hidden=true;
