@@ -44,7 +44,7 @@ function renderProducts(){
       "<h3>"+esc(p.name)+"</h3>"+
       "<p>"+esc(p.description||"Selected from our fulfillment partner.")+"</p>"+
       picker+
-      "<div class=\"product-bottom\"><span class=\"price\">"+money(p.price)+"</span>"+
+      "<div class=\"product-bottom\"><span class=\"price\">From "+money(p.price)+"</span>"+
       (ready
         ?"<button type=\"button\" class=\"add\" data-add=\""+esc(productId(p))+"\">Add to bag</button>"
         :"<button type=\"button\" class=\"add\" data-options=\""+esc(productId(p))+"\">Choose options →</button>")+
