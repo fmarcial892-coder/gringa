@@ -1,17 +1,4 @@
-const products=[
-{id:"magnetic-phone-mount",name:"Magnetic Phone Mount",price:29.99,cat:"Tech",desc:"A clean, compact mount for your desk or daily setup.",img:"https://images.unsplash.com/photo-1556656793-08538906a9f8?auto=format&fit=crop&w=900&q=85"},
-{id:"wireless-charging-pad",name:"Wireless Charging Pad",price:32.99,cat:"Tech",desc:"Minimal wireless charging for a clutter-free workspace.",img:"https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&w=900&q=85"},
-{id:"ergonomic-laptop-stand",name:"Ergonomic Laptop Stand",price:44.99,cat:"Tech",desc:"Lift your screen and create a more comfortable setup.",img:"https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=900&q=85"},
-{id:"portable-led-desk-lamp",name:"Portable LED Desk Lamp",price:36.99,cat:"Home",desc:"Soft, modern light for work, reading and late nights.",img:"https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=85"},
-{id:"minimal-desk-organizer",name:"Minimal Desk Organizer",price:27.99,cat:"Home",desc:"Keep everyday essentials organized without the visual clutter.",img:"https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=900&q=85"},
-{id:"reusable-water-bottle",name:"Reusable Water Bottle",price:24.99,cat:"Home",desc:"A simple everyday bottle designed for life on the move.",img:"https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=900&q=85"},
-{id:"travel-organizer-set",name:"Travel Organizer Set",price:29.99,cat:"Travel",desc:"Keep cables, chargers and small essentials in their place.",img:"https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=900&q=85"},
-{id:"travel-neck-pillow",name:"Travel Neck Pillow",price:26.99,cat:"Travel",desc:"Comfort-focused support for long flights and road trips.",img:"https://images.unsplash.com/photo-1563298723-dcfebaa392e3?auto=format&fit=crop&w=900&q=85"},
-{id:"compact-travel-pouch",name:"Compact Travel Pouch",price:21.99,cat:"Travel",desc:"A neat carry-all for the little things you never want to lose.",img:"https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=900&q=85"},
-{id:"portable-mini-fan",name:"Portable Mini Fan",price:31.99,cat:"Tech",desc:"Compact personal airflow for your desk, travel or commute.",img:"https://images.unsplash.com/photo-1593642532744-d377ab507dc8?auto=format&fit=crop&w=900&q=85"},
-{id:"airtight-storage-set",name:"Airtight Storage Set",price:39.99,cat:"Home",desc:"Clean storage that keeps everyday ingredients fresh.",img:"https://images.unsplash.com/photo-1584473457493-17c4c24290c1?auto=format&fit=crop&w=900&q=85"},
-{id:"foldable-shopping-bag",name:"Foldable Shopping Bag",price:19.99,cat:"Travel",desc:"Lightweight reusable carry bag that folds down small.",img:"https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=900&q=85"}
-];
+const products=[];
 
 let cart=[];
 try {
@@ -28,6 +15,10 @@ function money(n){return "$"+Number(n).toFixed(2)}
 
 function renderProducts(filter="All"){
  const list=filter==="All"?products:products.filter(p=>p.cat===filter);
+ if(!list.length){
+   grid.innerHTML=`<div class="collection-note"><span>THE NEXT EDIT</span><h3>We’re curating the collection.</h3><p>Real products, real supplier information and real pricing will be added here after the GRINGA collection is selected from CJdropshipping.</p></div>`;
+   return;
+ }
  grid.innerHTML=list.map(p=>{const idx=products.indexOf(p);return `<article class="product"><div class="product-img"><img src="${p.img}" alt="${p.name}" loading="lazy"><span class="tag">${p.cat.toUpperCase()}</span></div><div class="product-info"><span class="cat">${p.cat}</span><h3>${p.name}</h3><p>${p.desc}</p><div class="product-bottom"><span class="price">${money(p.price)}</span><button type="button" class="add" data-add="${idx}">Add to bag</button></div></div></article>`}).join("");
 }
 
