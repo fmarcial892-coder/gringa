@@ -2,7 +2,7 @@ let products=[];
 let cart=[];
 try{
   const s=JSON.parse(localStorage.getItem("gringa-cart")||"[]");
-  cart=Array.isArray(s)?s.filter(x=>x&&typeof x.variantId==="string"&&Number.isInteger(x.qty)&&x.qty>0):[];
+  cart=Array.isArray(s)?s.filter(x=>x&&typeof x.variantId==="string"&&Number.isInteger(x.qty)&&x.qty>0).map(x=>({...x,productId:String(x.productId||"").replace(/^gringa-cj-/,"")})):[];
 }catch{
   localStorage.removeItem("gringa-cart");
 }
