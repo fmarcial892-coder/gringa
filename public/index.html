@@ -1,53 +1,139 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GRINGA — Modern Finds, Delivered Worldwide</title>
-<meta name="description" content="Discover smart everyday products, carefully selected for modern life and delivered worldwide.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GRINGA — Curated finds for modern life</title>
+<meta name="description" content="GRINGA curates useful, well-designed finds for modern everyday life. Shop in USD with secure checkout.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<div class="announcement">FREE SHIPPING ON SELECTED ORDERS <span>•</span> SECURE CHECKOUT <span>•</span> WORLDWIDE DELIVERY</div>
+<div class="announcement">COMPLIMENTARY DELIVERY ON SELECTED ORDERS <span>·</span> SECURE CHECKOUT <span>·</span> PRICES IN USD</div>
+
 <header class="header">
-  <a class="logo" href="#"><span>G</span>RINGA</a>
-  <nav><a href="#shop">Shop</a><a href="#why">Why Gringa</a><a href="#faq">FAQ</a></nav>
-  <button class="cart-btn" id="cartBtn">Bag <span id="count">0</span></button>
+  <a class="logo" href="#" aria-label="GRINGA home"><span>G</span>RINGA</a>
+  <nav class="desktop-nav" aria-label="Main navigation">
+    <a href="#products">Shop</a>
+    <a href="#new">New arrivals</a>
+    <a href="#categories">Categories</a>
+    <a href="#about">About</a>
+  </nav>
+  <div class="header-actions">
+    <button class="search-toggle" id="searchToggle" type="button" aria-label="Search">⌕</button>
+    <button class="cart-btn" id="cartBtn" type="button">Bag <span id="count">0</span></button>
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu">☰</button>
+  </div>
 </header>
+<div class="search-panel" id="searchPanel">
+  <input id="searchInput" type="search" placeholder="Search the collection" autocomplete="off" aria-label="Search products">
+  <button id="searchClose" type="button">×</button>
+</div>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#products">Shop</a><a href="#new">New arrivals</a><a href="#categories">Categories</a><a href="#about">About</a>
+</div>
+
 <main>
 <section class="hero">
   <div class="hero-copy">
-    <div class="pill">NEW SEASON · 2026</div>
-    <h1>Good finds.<br><em>Better everyday.</em></h1>
-    <p>Curated products that make everyday life simpler, smarter and a little more beautiful.</p>
-    <div class="hero-actions"><a class="primary" href="#shop">Explore products <span>→</span></a><a class="text-link" href="#why">Why shop with us</a></div>
-    <div class="trust"><span>✓ Secure checkout</span><span>✓ Tracked delivery</span><span>✓ Customer support</span></div>
+    <p class="eyebrow">THE GRINGA EDIT · 2026</p>
+    <h1>Things you'll<br><i>actually use.</i></h1>
+    <p class="hero-lead">A considered collection of useful objects for work, home, travel and everywhere in between.</p>
+    <div class="hero-actions">
+      <a class="primary" href="#products">Shop the collection <span>→</span></a>
+      <a class="text-link" href="#about">Our point of view</a>
+    </div>
+    <div class="hero-notes"><span>Secure checkout</span><span>International delivery</span><span>Customer support</span></div>
   </div>
   <div class="hero-visual">
-    <div class="hero-card"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1200&q=85" alt="Modern lifestyle product"></div>
-    <div class="floating"><strong>Curated picks</strong><small>For modern living</small></div>
+    <div class="hero-frame"><img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1400&q=90" alt="Minimal modern product styling"></div>
+    <div class="hero-caption"><span>01</span><strong>Everyday, considered.</strong><small>Useful pieces. Clean design.</small></div>
   </div>
 </section>
-<section class="categories" id="shop">
-  <div><span>01</span><a href="#products" data-filter="All">All products</a></div>
-  <div><span>02</span><a href="#products" data-filter="Tech">Tech & gadgets</a></div>
-  <div><span>03</span><a href="#products" data-filter="Home">Home & living</a></div>
-  <div><span>04</span><a href="#products" data-filter="Travel">Travel</a></div>
+
+<section class="marquee" aria-label="GRINGA values"><span>USEFUL</span><b>✦</b><span>CONSIDERED</span><b>✦</b><span>MODERN</span><b>✦</b><span>WORLDWIDE</span><b>✦</b><span>USEFUL</span></section>
+
+<section class="category-section" id="categories">
+  <div class="section-heading">
+    <div><p class="eyebrow">SHOP BY CATEGORY</p><h2>Find your everyday.</h2></div>
+    <p>Explore the collection by the way you live.</p>
+  </div>
+  <div class="category-grid">
+    <a class="category-card category-tech" href="#products" data-filter="Tech"><span>01</span><strong>Tech & gadgets</strong><small>Smart tools for your setup →</small></a>
+    <a class="category-card category-home" href="#products" data-filter="Home"><span>02</span><strong>Home & living</strong><small>Simple things, better spaces →</small></a>
+    <a class="category-card category-travel" href="#products" data-filter="Travel"><span>03</span><strong>Travel</strong><small>Made to move with you →</small></a>
+  </div>
 </section>
+
 <section class="products-section" id="products">
-  <div class="section-top"><div><p class="kicker">THE COLLECTION</p><h2>Made for your day.</h2></div><div class="filters" id="filters"><button class="active" data-filter="All">All</button><button data-filter="Tech">Tech</button><button data-filter="Home">Home</button><button data-filter="Travel">Travel</button></div></div>
+  <div class="section-top" id="new">
+    <div><p class="eyebrow">THE COLLECTION</p><h2>Good things, well chosen.</h2></div>
+    <div class="filters" id="filters"><button class="active" data-filter="All">All</button><button data-filter="Tech">Tech</button><button data-filter="Home">Home</button><button data-filter="Travel">Travel</button></div>
+  </div>
   <div class="grid" id="grid"></div>
 </section>
-<section class="editorial" id="why">
-  <div class="editorial-image"><img src="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=1200&q=85" alt="Minimal modern workspace"></div>
-  <div class="editorial-copy"><p class="kicker">WHY GRINGA</p><h2>Less noise.<br>More useful things.</h2><p>We focus on products with a clear purpose — useful, well-designed and easy to enjoy.</p><div class="benefits"><div><b>01</b><span><strong>Curated</strong>We select products with everyday value.</span></div><div><b>02</b><span><strong>Worldwide</strong>Delivery options for international customers.</span></div><div><b>03</b><span><strong>Supported</strong>Order help from purchase to delivery.</span></div></div></div>
+
+<section class="manifesto" id="about">
+  <div class="manifesto-image"><img src="https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=1400&q=90" alt="Minimal modern workspace"></div>
+  <div class="manifesto-copy">
+    <p class="eyebrow">THE GRINGA STANDARD</p>
+    <h2>Less clutter.<br>More <i>good stuff.</i></h2>
+    <p>GRINGA is built around a simple idea: a great store should make discovering something good feel effortless.</p>
+    <div class="standard-list">
+      <div><span>01</span><p><strong>Purpose first</strong>Products earn their place by being genuinely useful.</p></div>
+      <div><span>02</span><p><strong>Clean experience</strong>Clear information, straightforward shopping and no unnecessary noise.</p></div>
+      <div><span>03</span><p><strong>Made to travel</strong>A storefront designed for customers around the world.</p></div>
+    </div>
+  </div>
 </section>
-<section class="faq" id="faq"><div><p class="kicker">NEED TO KNOW</p><h2>Questions,<br>answered.</h2></div><div class="questions"><details open><summary>Where do you ship?</summary><p>We offer international delivery on eligible products. Available options and delivery estimates are shown during checkout.</p></details><details><summary>How can I track my order?</summary><p>Once your order ships, tracking information will be provided when available.</p></details><details><summary>What currency are prices shown in?</summary><p>Prices are displayed in USD unless otherwise indicated.</p></details><details><summary>Is checkout secure?</summary><p>Yes. Checkout is designed to keep payment information protected and is handled through the configured payment provider.</p></details></div></section>
+
+<section class="service-strip">
+  <div><strong>Secure checkout</strong><span>Payment handled through PayPal.</span></div>
+  <div><strong>Prices in USD</strong><span>Simple international pricing.</span></div>
+  <div><strong>Delivery support</strong><span>Tracking information when available.</span></div>
+  <div><strong>Here to help</strong><span>Customer support from order to delivery.</span></div>
+</section>
+
+<section class="faq" id="faq">
+  <div><p class="eyebrow">NEED TO KNOW</p><h2>Questions,<br>answered.</h2></div>
+  <div class="questions">
+    <details open><summary>Where do you ship?</summary><p>International delivery is available on eligible products. Available delivery options and estimates are shown during checkout.</p></details>
+    <details><summary>How can I track my order?</summary><p>Tracking information will be provided when it is available for your order.</p></details>
+    <details><summary>What currency are prices shown in?</summary><p>Prices are displayed in USD unless otherwise indicated.</p></details>
+    <details><summary>Is checkout secure?</summary><p>Yes. Payment is handled through the configured PayPal checkout flow.</p></details>
+  </div>
+</section>
 </main>
-<footer><div class="footer-main"><a class="logo" href="#"><span>G</span>RINGA</a><p>Modern finds for everyday life.</p><div><a href="#shop">Shop</a><a href="#faq">FAQ</a><a href="#">Privacy</a><a href="#">Terms</a></div></div><div class="footer-bottom"><span>© 2026 GRINGA. All rights reserved.</span><span>Secure shopping · Worldwide delivery</span></div></footer>
-<aside class="drawer" id="drawer"><div class="drawer-head"><h3>Your bag</h3><button id="closeCart">×</button></div><div id="cartItems" class="cart-items"></div><div class="drawer-bottom"><div><span>Subtotal</span><strong id="subtotal">$0.00</strong></div><button class="checkout" id="checkout">Continue to secure checkout →</button><div id="paypalArea" class="paypal-area" hidden><div id="paypal-button-container"></div><p id="paypalMessage" class="paypal-message"></p></div><small>Secure payment in USD. Shipping address is collected through PayPal.</small></div></aside>
+
+<footer>
+  <div class="footer-main">
+    <div class="footer-brand"><a class="logo" href="#"><span>G</span>RINGA</a><p>Curated finds for modern life.</p></div>
+    <div class="footer-links"><div><b>SHOP</b><a href="#products">All products</a><a href="#new">New arrivals</a><a href="#categories">Categories</a></div><div><b>HELP</b><a href="#faq">FAQ</a><a href="#faq">Shipping</a><a href="#faq">Order support</a></div><div><b>GRINGA</b><a href="#about">Our standard</a><a href="#about">About</a></div></div>
+  </div>
+  <div class="footer-bottom"><span>© 2026 GRINGA. All rights reserved.</span><span>Secure shopping · Prices in USD</span></div>
+</footer>
+
+<aside class="drawer" id="drawer" aria-label="Shopping bag">
+  <div class="drawer-head"><div><span class="eyebrow">YOUR ORDER</span><h3>Your bag</h3></div><button id="closeCart" type="button" aria-label="Close bag">×</button></div>
+  <div id="cartItems" class="cart-items"></div>
+  <div class="drawer-bottom"><div class="subtotal-line"><span>Subtotal</span><strong id="subtotal">$0.00</strong></div><button class="checkout" id="checkout" type="button">Continue to secure checkout →</button><div id="paypalArea" class="paypal-area" hidden><div id="paypal-button-container"></div><p id="paypalMessage" class="paypal-message"></p></div><small>Secure payment in USD. Your shipping address is collected through PayPal.</small></div>
+</aside>
 <div class="overlay" id="overlay"></div>
 <script src="/app.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+  const menu=document.querySelector("#mobileMenu"), menuBtn=document.querySelector("#menuBtn"), search=document.querySelector("#searchPanel"), searchBtn=document.querySelector("#searchToggle"), closeSearch=document.querySelector("#searchClose"), input=document.querySelector("#searchInput");
+  menuBtn?.addEventListener("click",()=>menu.classList.toggle("open"));
+  menu?.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>menu.classList.remove("open")));
+  searchBtn?.addEventListener("click",()=>{search.classList.toggle("open"); if(search.classList.contains("open")) input.focus()});
+  closeSearch?.addEventListener("click",()=>search.classList.remove("open"));
+  input?.addEventListener("input",()=>{
+    const q=input.value.trim().toLowerCase();
+    document.querySelectorAll("#grid .product").forEach(card=>{card.hidden=q && !card.innerText.toLowerCase().includes(q)});
+  });
+});
+</script>
 </body>
 </html>
