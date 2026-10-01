@@ -109,7 +109,9 @@ function retailPrice(cost){
 }
 
 function shippingSalePrice(cost){
-  return salePriceForCost(cost,{includeFixed:false,minProfit:0});
+  const n=Number(cost)||0;
+  if(n<=0) return 0;
+  return salePriceForCost(n,{includeFixed:false,minProfit:0});
 }
 
 function normalizeDetail(d,pid){
