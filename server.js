@@ -167,6 +167,8 @@ async function catalogList(){
       query:{
         page,
         size:20,
+        startWarehouseInventory:1,
+        verifiedWarehouse:1,
         sort:"desc",
         orderBy:3,
         features:"enable_description,enable_category"
