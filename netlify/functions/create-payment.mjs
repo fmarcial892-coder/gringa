@@ -1,0 +1,3 @@
+import {json,bad,read,clean} from './_lib.mjs';
+// Server-side boundary: provider secret keys never reach the storefront bundle.
+export default async event=>{if(event.httpMethod!=='POST')return json(405,{error:'Method not allowed'});const data=read(event);if(!data||!Array.isArray(data.items)||!data.items.length)return bad('A non-empty cart is required.');const email=clean(data.email);if(!/^\S+@\S+\.\S+$/.test(email))return bad('A valid email is required.');if(!process.env.PAYMENT_PROVIDER||!process.env.PAYMENT_SECRET_KEY)return json(503,{error:'Payments are not configured.'});return json(501,{error:'Configure the selected provider adapter before accepting payments.'})};
