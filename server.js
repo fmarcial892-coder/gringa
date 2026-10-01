@@ -163,33 +163,25 @@ async function catalogList(){
   const primary=await catalogDetail(CJ_PRODUCT_ID);
   const rows=[];
 
-  // Use CJ's live V2 product list for the storefront cards. We deliberately
-  // do not hydrate every card with /product/query here; variants are loaded
-  // only when the customer opens a product, which keeps the collection fast
-  // and avoids failing the entire catalog because one product has incomplete
-  // detail data.
-  for(let page=1;page<=5 && rows.length<100;page++){
-    const r=await cj("/product/listV2",{
-      query:{
-        page,
-        size:20,
-        startWarehouseInventory:1,
-        verifiedWarehouse:1,
-        sort:"desc",
-        orderBy:3,
-        features:"enable_description,enable_category"
-      }
-    });
-    const groups=Array.isArray(r.data?.content)?r.data.content:[];
-    const pageRows=groups.flatMap(x=>Array.isArray(x?.productList)?x.productList:[]);
-    if(!pageRows.length) break;
-    rows.push(...pageRows);
-    if(pageRows.length<20) break;
+  // One broad V2 request is more reliable and cheaper than several filtered
+  // pages. We only use the summary fields needed for storefront cards.
+  const r=await cj("/product/listV2",{
+    query:{
+      page:1,
+      size:100,
+      sort:"desc",
+      orderBy:3,
+      features:"enable_description,enable_category"
+    }
+  });
+
+  const groups=Array.isArray(r.data?.content)?r.data.content:[];
+  for(const group of groups){
+    if(Array.isArray(group?.productList)) rows.push(...group.productList);
   }
 
   const candidates=rows
     .filter(x=>x?.id&&String(x.id)!==CJ_PRODUCT_ID)
-    .filter(x=>String(x.saleStatus||"3")!=="0")
     .filter(x=>x.bigImage)
     .filter(x=>Number(x.nowPrice??x.sellPrice??0)>0)
     .filter((x,i,a)=>a.findIndex(y=>String(y.id)===String(x.id))===i);
@@ -212,6 +204,7 @@ async function catalogList(){
     if(list.some(p=>p.cjProductId===pid)) continue;
     const cost=Number(x.nowPrice??x.sellPrice??0);
     if(!(cost>0)) continue;
+
     list.push({
       id:"gringa-cj-"+pid,
       cjProductId:pid,
@@ -219,7 +212,7 @@ async function catalogList(){
       price:retailPrice(cost),
       image:String(x.bigImage),
       images:[String(x.bigImage)],
-      description:plainText(String(x.description||"Product information available from CJ."),900),
+      description:plainText(x.description||"Product information available from CJ.",900),
       category:String(x.oneCategoryName||x.twoCategoryName||x.threeCategoryName||"Selected edit"),
       variants:null
     });
